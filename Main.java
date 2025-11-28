@@ -140,15 +140,16 @@ abstract class SearchAlgorithm {
         return path;
     }
 
-    protected double calculatePathCost(List<Node> path) {
+    protected double calculatePathCost(List<Node> path, int[][] graph) {
         if (path.size() < 2) {
             return 0;
         }
 
         double totalCost = 0;
         for (int i = 0; i < path.size() - 1; i++) {
+            Node current = path.get(i);
             Node next = path.get(i + 1);
-            totalCost += next.g;
+            totalCost += graph[current.index][next.index];
         }
         return totalCost;
     }
@@ -210,7 +211,7 @@ class BFS extends SearchAlgorithm {
 
             if (current.equals(goal)) {
                 result.path = reconstructPath(current);
-                result.totalCost = calculatePathCost(result.path);
+                result.totalCost = calculatePathCost(result.path, graph);
                 break;
             }
 
@@ -258,7 +259,7 @@ class DFS extends SearchAlgorithm {
 
             if (current.equals(goal)) {
                 result.path = reconstructPath(current);
-                result.totalCost = calculatePathCost(result.path);
+                result.totalCost = calculatePathCost(result.path, graph);
                 break;
             }
 
@@ -296,24 +297,31 @@ class Dijkstra extends SearchAlgorithm {
         int size = graph.length;
         double[] dist = new double[size];
         boolean[] visited = new boolean[size];
+        Node[] nodes = new Node[size]; // Array para rastrear nós
+
+        // Inicializar array de nós
+        for (int i = 0; i < size; i++) {
+            nodes[i] = new Node(i);
+        }
 
         Arrays.fill(dist, Double.MAX_VALUE);
         dist[start.index] = 0;
+        nodes[start.index] = start;
 
         PriorityQueue<Node> queue = new PriorityQueue<>((a, b) -> Double.compare(dist[a.index], dist[b.index]));
-        queue.add(start);
+        queue.add(nodes[start.index]);
 
         while (!queue.isEmpty()) {
             Node current = queue.poll();
-            result.nodesExpanded++;
 
             if (visited[current.index]) {
                 continue;
             }
             visited[current.index] = true;
+            result.nodesExpanded++;
 
             if (current.equals(goal)) {
-                result.path = reconstructPath(current);
+                result.path = reconstructPath(nodes[goal.index]);
                 result.totalCost = dist[goal.index];
                 break;
             }
@@ -323,9 +331,9 @@ class Dijkstra extends SearchAlgorithm {
                     double newDist = dist[current.index] + graph[current.index][neighbor.index];
                     if (newDist < dist[neighbor.index]) {
                         dist[neighbor.index] = newDist;
-                        neighbor.parent = current;
-                        neighbor.g = newDist;
-                        queue.add(neighbor);
+                        nodes[neighbor.index].parent = nodes[current.index];
+                        nodes[neighbor.index].g = newDist;
+                        queue.add(nodes[neighbor.index]);
                     }
                 }
             }
@@ -374,7 +382,7 @@ class GreedyBestFirstSearch extends SearchAlgorithm {
 
             if (current.equals(goal)) {
                 result.path = reconstructPath(current);
-                result.totalCost = calculatePathCost(result.path);
+                result.totalCost = calculatePathCost(result.path, graph);
                 break;
             }
 
@@ -420,22 +428,28 @@ class AStarSearch extends SearchAlgorithm {
         double[] gScore = new double[size];
         double[] fScore = new double[size];
         boolean[] visited = new boolean[size];
+        Node[] nodes = new Node[size]; // Array para rastrear nós
+
+        // Inicializar array de nós
+        for (int i = 0; i < size; i++) {
+            nodes[i] = new Node(i);
+        }
 
         Arrays.fill(gScore, Double.MAX_VALUE);
         Arrays.fill(fScore, Double.MAX_VALUE);
 
         gScore[start.index] = 0;
         fScore[start.index] = Heuristic.calculate(heuristicType, size, start, goal);
+        nodes[start.index] = start;
 
         PriorityQueue<Node> queue = new PriorityQueue<>((a, b) -> Double.compare(fScore[a.index], fScore[b.index]));
-        queue.add(start);
+        queue.add(nodes[start.index]);
 
         while (!queue.isEmpty()) {
             Node current = queue.poll();
-            result.nodesExpanded++;
 
             if (current.equals(goal)) {
-                result.path = reconstructPath(current);
+                result.path = reconstructPath(nodes[goal.index]);
                 result.totalCost = gScore[goal.index];
                 break;
             }
@@ -444,17 +458,18 @@ class AStarSearch extends SearchAlgorithm {
                 continue;
             }
             visited[current.index] = true;
+            result.nodesExpanded++;
 
             for (Node neighbor : getNeighbors(current, graph)) {
                 if (!visited[neighbor.index]) {
                     double tentativeGScore = gScore[current.index] + graph[current.index][neighbor.index];
 
                     if (tentativeGScore < gScore[neighbor.index]) {
-                        neighbor.parent = current;
+                        nodes[neighbor.index].parent = nodes[current.index];
                         gScore[neighbor.index] = tentativeGScore;
                         fScore[neighbor.index] = tentativeGScore
                                 + Heuristic.calculate(heuristicType, size, neighbor, goal);
-                        queue.add(neighbor);
+                        queue.add(nodes[neighbor.index]);
                     }
                 }
             }
